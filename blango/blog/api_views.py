@@ -1,47 +1,49 @@
-import json
 from http import HTTPStatus
-
-from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed,HttpRequest
-from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
-
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from blog.api.serializers import AppointmentRequestSerializer
 from blog.models import Post
 
-from blog.api.serializers import PostSerializer
-import json as simplejson
 
 
 
 
-@csrf_exempt
+@api_view(["GET", "POST"])
 def post_list(request):
     if request.method == "GET":
         posts = Post.objects.all()
-        return JsonResponse({"data": PostSerializer(posts, many=True).data})
+        return Response({"data": AppointmentRequestSerializer(posts,
+        many=True).data})
     elif request.method == "POST":
+        serializer = AppointmentRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            post = serializer.save()
+            return Response(
+            status=HTTPStatus.CREATED,
+            headers={"Location": reverse("api_post_detail",
+            args=(post.pk,))},
+            )
+        return Response(serializer.errors,
+        status=HTTPStatus.BAD_REQUEST)
 
-        serializer = PostSerializer(data=request.POST)
-        serializer.is_valid(raise_exception=True)
-        post = serializer.save()
-        return JsonResponse(PostSerializer(post).data)
-
-    return HttpResponseNotAllowed(["GET", "POST"])
 
 
-@csrf_exempt
+@api_view(["GET", "PUT", "DELETE"])
 def post_detail(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-
+    try:
+        post = Post.objects.get(pk=pk)
+    except Post.DoesNotExist:
+        return Response(status=HTTPStatus.NOT_FOUND)
     if request.method == "GET":
-        return JsonResponse({"data": PostSerializer(post).data})
+        return Response(AppointmentRequestSerializer(post).data)
     elif request.method == "PUT":
-        serializer = PostSerializer(post, data=request.POST)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return HttpResponse(status=HTTPStatus.NO_CONTENT)
+        serializer = AppointmentRequestSerializer(post, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=HTTPStatus.NO_CONTENT)
+        return Response(serializer.errors,
+        status=HTTPStatus.BAD_REQUEST)
     elif request.method == "DELETE":
         post.delete()
-        return HttpResponse(status=HTTPStatus.NO_CONTENT)
-
-    return HttpResponseNotAllowed(["GET", "PUT", "DELETE"])
+        return Response(status=HTTPStatus.NO_CONTENT)
