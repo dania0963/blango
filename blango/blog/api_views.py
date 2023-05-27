@@ -1,7 +1,7 @@
 import json
 from http import HTTPStatus
 
-from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed
+from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed,HttpRequest
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -20,11 +20,9 @@ def post_list(request):
         posts = Post.objects.all()
         return JsonResponse({"data": PostSerializer(posts, many=True).data})
     elif request.method == "POST":
-        post=request.POST
-        
-        serializer = PostSerializer(data={})
+
+        serializer = PostSerializer(data=request.POST)
         serializer.is_valid(raise_exception=True)
-        serializer.errors
         post = serializer.save()
         return JsonResponse(PostSerializer(post).data)
 
@@ -38,7 +36,7 @@ def post_detail(request, pk):
     if request.method == "GET":
         return JsonResponse({"data": PostSerializer(post).data})
     elif request.method == "PUT":
-        serializer = PostSerializer(post, data=request.data)
+        serializer = PostSerializer(post, data=request.POST)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return HttpResponse(status=HTTPStatus.NO_CONTENT)
